@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-greeting
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: greeting
+  template:
+    metadata:
+      labels:
+        app: greeting
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+      - name: greeting
+        image: 920301614774.dkr.ecr.eu-north-1.amazonaws.com/my-greeting:1.0
+        ports:
+        - containerPort: 5000
