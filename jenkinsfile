@@ -1,0 +1,55 @@
+pipeline {
+    agent { docker { image 'python:3.10-slim' } }  // Runs in a Python container for consistency
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm  // Gets your latest code from GitHub
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install -r requirements.txt'  // Installs Flask
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'No tests yet—add some with pytest!'  // Placeholder; we'll suggest adding tests below
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t my-greeting:latest .'  // Builds your Docker container
+            }
+        }
+
+        stage('Push to Registry') {
+            when { branch 'main' }  // Only on main branch
+            steps {
+                echo 'Pushing to AWS ECR... (add login/push commands here)'
+                // Example: withCredentials([string(credentialsId: 'ecr-secret', variable: 'SECRET')]) {
+                //     sh "docker login -u AWS -p $SECRET https://your-ecr-url"
+                //     sh 'docker tag my-greeting:latest your-ecr-repo/my-greeting:latest'
+                //     sh 'docker push your-ecr-repo/my-greeting:latest'
+                // }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            when { branch 'main' }  // Only on main
+            steps {
+                echo 'Deploying... (add kubectl commands here)'
+                // Example: sh 'kubectl apply -f deployment.yml -f service.yml -f ingress.yml'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline done!'
+        }
+    }
+}
