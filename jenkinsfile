@@ -50,7 +50,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             when { branch 'main' }
             steps {
-                withKubeConfig([credentialsId: 'my-kubeconfig']) {
+                withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh '''
                         # Optional: Update image in deployment.yml if not already using :latest
                         # sed -i "s|image: .*|image: ${ECR_URL}/${IMAGE_NAME}|g" deployment.yml
