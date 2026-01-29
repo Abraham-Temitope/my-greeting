@@ -1,5 +1,5 @@
 pipeline {
-    agent any  // Runs on your EC2 Jenkins server
+    agent any  // Runs directly on your EC2 Jenkins server
 
     environment {
         ECR_REPO     = 'my-greeting'                    // Change only if your ECR repo name is different
@@ -19,9 +19,20 @@ pipeline {
         stage('Install Dependencies & Test') {
             steps {
                 sh '''
-                    python3 -m pip install --upgrade pip
-                    python3 -m pip install -r requirements.txt
-                    python3 -m pytest || true   // Don't fail pipeline if no tests exist yet
+                    # Create a temporary virtual environment for this build
+                    python3 -m venv build-venv
+                    
+                    # Activate it
+                    . build-venv/bin/activate
+                    
+                    # Upgrade pip inside the venv
+                    python -m pip install --upgrade pip
+                    
+                    # Install project dependencies
+                    pip install -r requirements.txt
+                    
+                    # Run tests (or skip gracefully if no tests)
+                    pytest || true
                 '''
             }
         }
@@ -49,7 +60,7 @@ pipeline {
             when { branch 'main' }
             steps {
                 echo "Successfully pushed ${ECR_URL}/${IMAGE_NAME}"
-                echo "Next step: manually apply your k8s files or add kubectl commands here"
+                echo "Next step: manually apply your Kubernetes files or add kubectl commands here"
             }
         }
     }
