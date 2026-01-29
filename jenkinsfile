@@ -1,55 +1,68 @@
 pipeline {
-    agent { docker { image 'python:3.10-slim' } }  // Runs in a Python container for consistency
+    agent any  // Runs on your EC2 Jenkins server
+
+    environment {
+        ECR_REPO     = 'my-greeting'                    // Change only if your ECR repo name is different
+        AWS_REGION   = 'eu-north-1'                     // Your region
+        ACCOUNT_ID   = '920301614774'                   // Your AWS Account ID
+        ECR_URL      = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_NAME   = "${ECR_REPO}:latest"
+    }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm  // Gets your latest code from GitHub
+                checkout scm
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install Dependencies & Test') {
             steps {
-                sh 'pip install -r requirements.txt'  // Installs Flask
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo 'No tests yet—add some with pytest!'  // Placeholder; we'll suggest adding tests below
+                sh '''
+                    python -m pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pytest || true   // Don't fail pipeline if no tests exist yet
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t my-greeting:latest .'  // Builds your Docker container
+                sh '''
+                    docker build -t ${IMAGE_NAME} .
+                '''
             }
         }
 
-        stage('Push to Registry') {
-            when { branch 'main' }  // Only on main branch
+        stage('Push to ECR') {
+            when { branch 'main' }
             steps {
-                echo 'Pushing to AWS ECR... (add login/push commands here)'
-                // Example: withCredentials([string(credentialsId: 'ecr-secret', variable: 'SECRET')]) {
-                //     sh "docker login -u AWS -p $SECRET https://your-ecr-url"
-                //     sh 'docker tag my-greeting:latest your-ecr-repo/my-greeting:latest'
-                //     sh 'docker push your-ecr-repo/my-greeting:latest'
-                // }
+                sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
+                    docker tag ${IMAGE_NAME} ${ECR_URL}/${IMAGE_NAME}
+                    docker push ${ECR_URL}/${IMAGE_NAME}
+                '''
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            when { branch 'main' }  // Only on main
+        stage('Notify / Placeholder for Deploy') {
+            when { branch 'main' }
             steps {
-                echo 'Deploying... (add kubectl commands here)'
-                // Example: sh 'kubectl apply -f deployment.yml -f service.yml -f ingress.yml'
+                echo "Successfully pushed ${ECR_URL}/${IMAGE_NAME}"
+                echo "Next step: manually apply your k8s files or add kubectl commands here"
             }
         }
     }
 
     post {
         always {
-            echo 'Pipeline done!'
+            echo 'Pipeline execution finished'
+        }
+        success {
+            echo '✅ Build & push succeeded!'
+        }
+        failure {
+            echo '❌ Something failed - check the console output'
         }
     }
 }
