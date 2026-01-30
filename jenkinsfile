@@ -37,7 +37,7 @@ pipeline {
         }
 
         stage('Push to ECR') {
-            // when { branch 'main' }   // ← uncomment when ready to restrict to main only
+            // when { branch 'main' }   // ← uncomment when ready to restrict
             steps {
                 sh '''
                     aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
@@ -52,15 +52,26 @@ pipeline {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh '''
-                        echo "Current kubectl context:"
-                        kubectl config current-context || echo "No context set"
-
-                        kubectl apply -f deployment.yml || echo "deployment.yml failed"
-                        kubectl apply -f service.yml   || echo "service.yml failed"
-                        kubectl apply -f ingress.yml   || echo "ingress.yml failed"
-
-                        # Optional: wait for rollout
-                        # kubectl rollout status deployment/my-greeting --timeout=300s || echo "rollout check failed"
+                        echo "=== DEPLOY STAGE START ==="
+                        echo "Current working directory:"
+                        pwd
+                        
+                        echo "kubectl location and version:"
+                        which kubectl || echo "kubectl NOT FOUND in PATH"
+                        kubectl version --client || echo "kubectl version failed"
+                        
+                        echo "Current kubeconfig context:"
+                        kubectl config current-context || echo "No context loaded (kubeconfig issue)"
+                        
+                        echo "Listing .yml files in workspace:"
+                        ls -la *.yml || echo "No .yml files found"
+                        
+                        echo "Applying manifests:"
+                        kubectl apply -f deployment.yml || echo "deployment.yml FAILED"
+                        kubectl apply -f service.yml   || echo "service.yml FAILED"
+                        kubectl apply -f ingress.yml   || echo "ingress.yml FAILED"
+                        
+                        echo "=== DEPLOY STAGE END ==="
                     '''
                 }
             }
