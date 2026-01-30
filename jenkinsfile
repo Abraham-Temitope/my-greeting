@@ -44,7 +44,7 @@ pipeline {
         }
 
         stage('Push to ECR') {
-            when { branch 'main' }
+           // when { branch 'main' }
             steps {
                 sh '''
                     aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
@@ -55,7 +55,7 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            when { branch 'main' }
+            // when { branch 'main' }
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh '''
