@@ -1,10 +1,10 @@
 pipeline {
-    agent any  // Runs on your EC2 Jenkins server
+    agent any
 
     environment {
-        ECR_REPO     = 'my-greeting'                    // Your ECR repo name
-        AWS_REGION   = 'eu-north-1'                     // Your region
-        ACCOUNT_ID   = '920301614774'                   // Your AWS Account ID
+        ECR_REPO     = 'my-greeting'
+        AWS_REGION   = 'eu-north-1'
+        ACCOUNT_ID   = '920301614774'
         ECR_URL      = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_NAME   = "${ECR_REPO}:latest"
     }
@@ -19,17 +19,10 @@ pipeline {
         stage('Install Dependencies & Test') {
             steps {
                 sh '''
-                    # Create temporary venv
                     python3 -m venv build-venv
-                    
-                    # Activate it
                     . build-venv/bin/activate
-                    
-                    # Upgrade pip & install deps
                     python -m pip install --upgrade pip
                     pip install -r requirements.txt
-                    
-                    # Run tests (continue even if collection fails)
                     pytest || true
                 '''
             }
@@ -44,7 +37,7 @@ pipeline {
         }
 
         stage('Push to ECR') {
-           // when { branch 'main' }
+            // when { branch 'main' }   // ← uncomment when ready to restrict to main only
             steps {
                 sh '''
                     aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
@@ -55,17 +48,19 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            // when { branch 'main' }
+            // when { branch 'main' }   // ← uncomment when ready
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh '''
-                        # Apply manifests (add more if you have other .yml files)
-                        kubectl apply -f deployment.yml
-                        kubectl apply -f service.yml
-                        kubectl apply -f ingress.yml
-                        
-                        # Optional: wait for rollout (change 'my-greeting' to your actual deployment name)
-                        # kubectl rollout status deployment/my-greeting --timeout=300s
+                        echo "Current kubectl context:"
+                        kubectl config current-context || echo "No context set"
+
+                        kubectl apply -f deployment.yml || echo "deployment.yml failed"
+                        kubectl apply -f service.yml   || echo "service.yml failed"
+                        kubectl apply -f ingress.yml   || echo "ingress.yml failed"
+
+                        # Optional: wait for rollout
+                        # kubectl rollout status deployment/my-greeting --timeout=300s || echo "rollout check failed"
                     '''
                 }
             }
